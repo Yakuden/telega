@@ -32,7 +32,7 @@ class Telegram(object):
                  system_version: str = 'unknown',
                  system_language_code: str = 'en',
                  login: bool = False,
-                 login_code_callback: callable = None) -> None:
+                 login_code_callback: Callable = None) -> None:
         """
         Args:
             api_id - ID of your app (https://my.telegram.org/apps/)
