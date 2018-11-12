@@ -31,7 +31,8 @@ class Telegram(object):
                  application_version: str = VERSION,
                  system_version: str = 'unknown',
                  system_language_code: str = 'en',
-                 login: bool = False) -> None:
+                 login: bool = False,
+                 login_code_callback: callable = None) -> None:
         """
         Args:
             api_id - ID of your app (https://my.telegram.org/apps/)
@@ -46,6 +47,7 @@ class Telegram(object):
             application_version
             system_version
             system_language_code
+            login_code_callback - a callback function for auth code
         """
         self.api_id = api_id
         self.api_hash = api_hash
@@ -57,6 +59,7 @@ class Telegram(object):
         self.system_language_code = system_language_code
         self.application_version = application_version
         self.use_message_database = use_message_database
+        self.login_code_callback = login_code_callback
 
         self._database_encryption_key = database_encryption_key
 
@@ -367,7 +370,13 @@ class Telegram(object):
 
     def _send_telegram_code(self) -> AsyncResult:
         logger.info('Sending code')
-        code = input('Enter code:')
+        code = ""
+        
+        if self.login_code_callback is None:
+            code = input('Enter code:')
+        else:
+            code = self.login_code_callback()
+            
         data = {
             '@type': 'checkAuthenticationCode',
             'code': str(code),
