@@ -32,7 +32,8 @@ print(telegram_client.get_all_chats())
 
 ```
 ## Logging
-    Just set config for 'telega' logger. Also you can set C++ logging level - TelegramTDLibClient(tdlib_log_level=3)
+Just set config for 'telega' logger. 
+Also you can set C++ logging level - TelegramTDLibClient(tdlib_log_level=3)
 
 ```python
 import logging.config
