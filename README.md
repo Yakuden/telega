@@ -1,68 +1,51 @@
-# python-telegram
+# Telega
 
-[![Build Status](https://travis-ci.org/kaxap/python-telegram.svg?branch=master)](https://travis-ci.org/kaxap/python-telegram)
-[![PyPI](https://img.shields.io/pypi/v/python-telegram.svg)](https://pypi.python.org/pypi/python-telegram)
-[![DockerHub](https://img.shields.io/docker/automated/akhmetov/python-telegram.svg)](https://hub.docker.com/r/akhmetov/python-telegram/)
-![Read the Docs (version)](https://img.shields.io/readthedocs/pip/stable.svg)
-
+## Description
+Python Telegram TDLib sync client
 Python API for the [tdlib](https://github.com/tdlib/td) library.
-If helps you build your own Telegram clients.
+It helps you build your own Telegram clients.
 
-* [Changelog](docs/source/changelog.rst)
-* [Documentation](http://python-telegram.readthedocs.io)
-* [Tutorial](http://python-telegram.readthedocs.io/en/latest/tutorial.html)
+## Installition
+pip install telega
 
-## Installation
-
-This library works with Python 3.6+ only.
-
-See [documentation](http://python-telegram.readthedocs.io/en/latest/#installation) to install
-
-### Docker
-
-This library has [docker image](https://hub.docker.com/r/akhmetov/python-telegram/):
-
-```sh
-docker run -i -t --rm \
-            -v /tmp/docker-python-telegram/:/tmp/ \
-            akhmetov/python-telegram \
-            python3 /app/examples/send_message.py $(API_ID) $(API_HASH) $(PHONE) $(CHAT_ID) $(TEXT)
-```
-
-## How to use
-
-Check the [tutorial](http://python-telegram.readthedocs.io/en/latest/tutorial.html) :)
-
-Basic example:
+## Example
 
 ```python
-    from telegram.client import Telegram
+from telega import TelegramTDLibClient
 
-    tg = Telegram(
-        api_id='api_id',
-        api_hash='api_hash',
-        phone='+31611111111',
-        database_encryption_key='changekey123',
-    )
-    tg.login()
 
-    # if this is the first run, library needs to preload all chats
-    # otherwise the message will not be sent
-    result = tg.get_chats()
-    result.wait()
+telegram_client = TelegramTDLibClient(
+    api_id=777,
+    api_hash='abc',
+    phone='911',
+    database_encryption_key='NAd62byYz7em',
+    # see all parameters in source code
+)
 
-    result = tg.send_message(
-        chat_id=args.chat_id,
-        text=args.text,
-    )
-    # `tdlib` is asynchronous, so `python-telegram` always returns you an `AsyncResult` object.
-    # You can receive a result with the `wait` method of this object.
-    result.wait()
-    print(result.update)
+if not telegram_client.is_authorized():
+    password = input('2 factor auth password (if you have): ')
+    telegram_client.auth_request()
+    sms_code = input('sms_code: ')
+    telegram_client.send_sms_code(sms_code, password)
+
+print(telegram_client.get_all_chats())
+
 ```
+## Logging
+    Just set config for 'telega' logger. Also you can set C++ logging level - TelegramTDLibClient(tdlib_log_level=3)
 
-More examples you can find in the [/examples/ directory](/examples/).
+```python
+import logging.config
 
-----
 
-More information in the [documentation](http://python-telegram.readthedocs.io).
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {'main': {'format': '[%(levelname)s] [%(asctime)s] [%(module)s:%(lineno)d] %(message)s',
+                            'datefmt': '%d/%m/%Y %H:%M:%S'}},
+    'handlers': {'console': {'level': 'DEBUG', 'class': 'logging.StreamHandler', 'formatter': 'main'}, },
+    'loggers': {'telega': {'handlers': ['console'], 'propagate': False, 'level': 'INFO'}, }
+}
+logging.config.dictConfig(LOGGING)
+
+```

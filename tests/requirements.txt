@@ -1,4 +1,0 @@
-pytest
-ipdb
-pytest-mock
-pytest-mypy
