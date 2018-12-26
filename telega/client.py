@@ -117,7 +117,7 @@ class TelegramTDLibClient:
     def log_out(self) -> None:
         try:
             self.call_method('logOut')
-        except errors.AuthError:
+        except (errors.AuthError, errors.AlreadyLoggingOut):
             pass
         logger.info('Logged out %s. Current state: "%s"', self.phone, self.get_auth_state())
 
@@ -263,6 +263,9 @@ class TelegramTDLibClient:
 
             if message == 'setAuthenticationPhoneNumber unexpected':
                 raise errors.AlreadyAuthorized(exc_msg)
+
+            if message == 'Already logging out':
+                raise errors.AlreadyLoggingOut(exc_msg)
 
             if code == 401 or message == 'Unauthorized':
                 raise errors.AuthError(exc_msg)
