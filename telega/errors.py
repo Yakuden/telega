@@ -2,7 +2,7 @@ class TDLibError(Exception):
     pass
 
 
-class FatalError(Exception):
+class FatalError(TDLibError):
     pass
 
 
@@ -27,6 +27,10 @@ class AlreadyAuthorized(TDLibError):
 
 
 class AuthError(TDLibError):
+    pass
+
+
+class InvalidPhoneNumber(AuthError):
     pass
 
 

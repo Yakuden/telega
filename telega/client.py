@@ -240,11 +240,14 @@ class TelegramTDLibClient:
                 raise errors.UnknownError('TimeOutError')
 
     @staticmethod
-    def _handle_errors(response: dict):
+    def _handle_errors(response: dict):   # TODO: refactoring
         if response['@type'] == 'error':
             message = response.get('message', 'Empty error message')
             code = response.get('code')
             exc_msg = f'Telegram error: %s -> %s' % (code, message)
+
+            if message == 'PHONE_NUMBER_INVALID':
+                raise errors.InvalidPhoneNumber(exc_msg)
 
             if message == 'PASSWORD_HASH_INVALID':
                 raise errors.PasswordError(exc_msg)
