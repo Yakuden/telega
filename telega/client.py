@@ -47,7 +47,7 @@ class TelegramTDLibClient:
                  database_encryption_key: str,
                  library_path: str = DEFAULT_TDLIB_PATH,  # 'libtdjson.so'
                  tdlib_log_level=2,
-                 request_timeout: Union[int, float] = default_timeout,
+                 timeout: Union[int, float] = default_timeout,
                  request_delay: Union[int, float] = default_request_delay,
                  sessions_directory: str = 'tdlib_sessions',
                  use_test_data_center: bool = False,
@@ -65,7 +65,7 @@ class TelegramTDLibClient:
         self.api_hash = api_hash
         self.phone = phone
         self._database_encryption_key = database_encryption_key
-        self.request_timeout = request_timeout
+        self.timeout = timeout
         self.request_delay = request_delay
         self.files_directory = sessions_directory
         self.use_test_data_center = use_test_data_center
@@ -215,7 +215,7 @@ class TelegramTDLibClient:
 
     def call_method(self, method_name: str, timeout=None, **params) -> dict:
         """ Use this method to call any other method of the tdlib. """
-        timeout = timeout or self.request_timeout
+        timeout = timeout or self.timeout
         request_id = uuid.uuid4().hex
         data = {'@type': method_name,
                 '@extra': {'request_id':  request_id}}
@@ -278,7 +278,7 @@ class TelegramTDLibClient:
     def _init(self) -> None:
         """ init before auth_request """
 
-        self.call_method('updateAuthorizationState', timeout=5, **{
+        self.call_method('updateAuthorizationState', **{
             '@type': 'setTdlibParameters',
             'parameters': {
                 'use_test_dc': self.use_test_data_center,
@@ -294,7 +294,7 @@ class TelegramTDLibClient:
             }
         })
 
-        self.call_method('updateAuthorizationState', timeout=5, **{
+        self.call_method('updateAuthorizationState', **{
             '@type': 'checkDatabaseEncryptionKey',
             'encryption_key': self._database_encryption_key
         })
@@ -305,4 +305,4 @@ class TelegramTDLibClient:
     def _set_proxy(self, host: str, port: int) -> None:
         """ SOCKS5 proxy only """
         proxy_type = {'@type': 'proxyTypeSocks5'}
-        self.call_method('addProxy', timeout=5, server=host, port=port, enable=True, type=proxy_type)
+        self.call_method('addProxy', server=host, port=port, enable=True, type=proxy_type)
