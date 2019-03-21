@@ -5,13 +5,14 @@ Python Telegram TDLib sync client
 Python API for the [tdlib](https://github.com/tdlib/td) library.
 It helps you build your own Telegram clients.
 
-## Installition
+## Installation
 pip install telega
 
 ## Example
 
 ```python
 from telega import TelegramTDLibClient
+from telega.client import ProxyTypes
 
 
 telegram_client = TelegramTDLibClient(
@@ -21,6 +22,9 @@ telegram_client = TelegramTDLibClient(
     database_encryption_key='NAd62byYz7em',
     # see all parameters in source code
 )
+
+telegram_client.set_proxy('109.234.112.250', 46675, ProxyTypes.proxyTypeHttp)
+# telegram_client.check_proxy()  # ping if you need
 
 if not telegram_client.is_authorized():
     password = input('2 factor auth password (if you have): ')

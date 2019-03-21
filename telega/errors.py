@@ -6,6 +6,24 @@ class FatalError(TDLibError):
     pass
 
 
+class InternalTdLibTimeoutExpired(TDLibError):
+    """ In C++ """
+    pass
+
+
+class TdLibResponseTimeoutError(TDLibError):
+    """ In Python """
+    pass
+
+
+class BadProxy(TDLibError):
+    pass
+
+
+class ConnectionError(TDLibError):
+    pass
+
+
 class NoPermission(TDLibError):
     pass
 
@@ -23,6 +41,10 @@ class TooManyRequests(TDLibError):
 
 
 class AlreadyAuthorized(TDLibError):
+    pass
+
+
+class SetAuthenticationPhoneNumberUnexpected(TDLibError):
     pass
 
 

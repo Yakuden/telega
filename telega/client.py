@@ -32,6 +32,15 @@ class AuthStates:
     Closed = 'authorizationStateClosed'
 
 
+class ProxyTypes:
+    """
+        You can use custom proxy types like {'@type': 'proxyTypeMtproto', 'secret': '123'}
+        https://core.telegram.org/tdlib/docs/classtd_1_1td__api_1_1_proxy_type.html
+    """
+    proxyTypeSocks5 = {'@type': 'proxyTypeSocks5'}
+    proxyTypeHttp = {'@type': 'proxyTypeHttp'}
+
+
 class TelegramTDLibClient:
 
     database_encryption_key_length = 12
@@ -52,7 +61,8 @@ class TelegramTDLibClient:
                  sessions_directory: str = 'tdlib_sessions',
                  use_test_data_center: bool = False,
                  use_message_database: bool = True,
-                 proxy: dict = None,  # proxy={'host': '0.0.0.0', 'port': 9999}
+                 # proxy: dict = None,  # deprecated!
+                 clear_proxies: bool = True,  # old proxies saved in session files
                  device_model: str = 'SpecialDevice',
                  application_version: str = '7.62',
                  system_version: str = '5.45',
@@ -70,11 +80,11 @@ class TelegramTDLibClient:
         self.files_directory = sessions_directory
         self.use_test_data_center = use_test_data_center
         self.use_message_database = use_message_database
-        self.proxy = proxy
         self.device_model = device_model
         self.application_version = application_version
         self.system_version = system_version
         self.system_language_code = system_language_code
+        self.clear_proxies = clear_proxies
 
         self._tdjson_client = TDJson(library_path, tdlib_log_level)
         self._init()
@@ -82,6 +92,36 @@ class TelegramTDLibClient:
     def __del__(self):
         if hasattr(self, '_tdjson'):
             self._tdjson_client.destroy()
+
+    def remove_proxy(self) -> None:
+        proxies = self.call_method('getProxies')
+        for proxy in proxies['proxies']:
+            self.call_method('removeProxy', proxy_id=proxy['id'])
+
+    def set_proxy(self, host: str, port: int, proxy_type=ProxyTypes.proxyTypeSocks5, check_proxy=True) -> None:
+        """
+            Since TDLib 1.3.0 addProxy can be called to enable proxy any time, even before setTdlibParameters.
+            Also you can use custom proxy_type like {'@type': 'proxyTypeMtproto', 'secret': '123'}
+        """
+        self.remove_proxy()
+        self.call_method('addProxy', server=host, port=port, enable=True, type=proxy_type)
+        if check_proxy:
+            self.check_proxy()
+
+    def check_proxy(self) -> float:
+        proxies = self.call_method('getProxies')['proxies']
+
+        if not proxies:
+            raise errors.BadProxy('No any proxy')
+        if len(proxies) != 1:
+            logger.error('len(proxies) = %d. Smth went wrong', len(proxies))
+
+        try:
+            result = self.call_method('pingProxy', proxy_id=proxies[0]['id'])
+            logger.info('Proxy works. Response time: %s seconds' % result['seconds'])
+            return result['seconds']
+        except (errors.InternalTdLibTimeoutExpired, errors.ConnectionError):
+            raise errors.BadProxy
 
     def get_auth_state(self) -> str:
         result = self.call_method('getAuthorizationState')
@@ -94,31 +134,41 @@ class TelegramTDLibClient:
 
     def auth_request(self) -> None:
         logger.info('Sending code request for phone number (%s)', self.phone)
-        response = self.call_method('setAuthenticationPhoneNumber',
-                                    phone_number=self.phone,
-                                    allow_flash_call=False,
-                                    is_current_phone_number=True)
-        logger.info('Sending code response: %s', response)
+
+        try:
+            response = self.call_method('setAuthenticationPhoneNumber',
+                                        phone_number=self.phone,
+                                        allow_flash_call=False,
+                                        is_current_phone_number=False)
+            logger.info('Sending code response: %s', response)
+
+        except errors.SetAuthenticationPhoneNumberUnexpected:
+            auth_state = self.get_auth_state()
+            if auth_state == AuthStates.Ready:
+                raise errors.AlreadyAuthorized
+            raise errors.SetAuthenticationPhoneNumberUnexpected(f'Current AuthState: {auth_state}')
 
     def send_sms_code(self, sms_code: str, password: str = None) -> None:
         authorization_state = self.get_auth_state()
         if authorization_state == AuthStates.WaitCode:
             send_code_result = self.call_method('checkAuthenticationCode', code=sms_code)
-            logger.info('checkAuthenticationCode response: %s', send_code_result)
+            logger.debug('checkAuthenticationCode response: %s', send_code_result)
             authorization_state = self.get_auth_state()
         if authorization_state == AuthStates.WaitPassword:
             if not password:
                 raise errors.TwoFactorPasswordNeeded
             send_password_result = self.call_method('checkAuthenticationPassword', password=password)
-            logger.info('checkAuthenticationPassword response: %s', send_password_result)
+            logger.debug('checkAuthenticationPassword response: %s', send_password_result)
 
+        sleep(0.2)
         self.get_auth_state()  # just for wait auth data saving
 
     def log_out(self) -> None:
         try:
             self.call_method('logOut')
-        except (errors.AuthError, errors.AlreadyLoggingOut):
-            pass
+        except errors.TDLibError as e:
+            if self.is_authorized():
+                raise e
         logger.info('Logged out %s. Current state: "%s"', self.phone, self.get_auth_state())
 
     def get_me(self) -> dict:
@@ -163,11 +213,7 @@ class TelegramTDLibClient:
                                        basic_group_id=chat['type']['basic_group_id'])['members']
 
         elif chat['type']['@type'] == 'chatTypeSupergroup':
-            # full_info = self._call_method('getSupergroupFullInfo', supergroup_id=chat['type']['supergroup_id'])
-            # if not full_info['can_get_members']:
-            #     raise errors.NoPermission('administrator privileges are required "%s"' % chat['title'])
             members = self._get_super_group_members(chat, page_size)
-            # return members
 
         else:
             raise errors.TDLibError('Unknown group type: %s' % chat['type']['@type'])
@@ -237,7 +283,7 @@ class TelegramTDLibClient:
                     return response
 
             if timeout and time.time() - started_at > timeout:
-                raise errors.UnknownError('TimeOutError')
+                raise errors.TdLibResponseTimeoutError('TdLibResponseTimeoutError')
 
     @staticmethod
     def _handle_errors(response: dict):   # TODO: refactoring
@@ -262,16 +308,26 @@ class TelegramTDLibClient:
                 raise errors.ObjectNotFound(exc_msg)
 
             if message == 'setAuthenticationPhoneNumber unexpected':
-                raise errors.AlreadyAuthorized(exc_msg)
+                raise errors.SetAuthenticationPhoneNumberUnexpected(exc_msg)
 
             if message == 'Already logging out':
                 raise errors.AlreadyLoggingOut(exc_msg)
+
+            if message == 'Timeout expired':
+                raise errors.InternalTdLibTimeoutExpired(exc_msg)
 
             if code == 401 or message == 'Unauthorized':
                 raise errors.AuthError(exc_msg)
 
             if code in (429, 420):
                 raise errors.TooManyRequests(exc_msg)
+
+            if message == 'Connection closed':
+                raise errors.ConnectionError(exc_msg)
+
+            if message.startswith('Read from fd') and message.endswith('has failed'):  # I know regex he he
+                # https://github.com/tdlib/td/issues/476
+                raise errors.ConnectionError(exc_msg)
 
             raise errors.UnknownError(exc_msg)
 
@@ -299,10 +355,5 @@ class TelegramTDLibClient:
             'encryption_key': self._database_encryption_key
         })
 
-        if self.proxy:
-            self._set_proxy(self.proxy['host'], self.proxy['port'])
-
-    def _set_proxy(self, host: str, port: int) -> None:
-        """ SOCKS5 proxy only """
-        proxy_type = {'@type': 'proxyTypeSocks5'}
-        self.call_method('addProxy', server=host, port=port, enable=True, type=proxy_type)
+        if self.clear_proxies:
+            self.remove_proxy()
