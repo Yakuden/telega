@@ -37,8 +37,8 @@ class ProxyTypes:
         You can use custom proxy types like {'@type': 'proxyTypeMtproto', 'secret': '123'}
         https://core.telegram.org/tdlib/docs/classtd_1_1td__api_1_1_proxy_type.html
     """
-    proxyTypeSocks5 = {'@type': 'proxyTypeSocks5'}
-    proxyTypeHttp = {'@type': 'proxyTypeHttp'}
+    Socks5 = {'@type': 'proxyTypeSocks5'}
+    Http = {'@type': 'proxyTypeHttp'}
 
 
 class TelegramTDLibClient:
@@ -61,8 +61,7 @@ class TelegramTDLibClient:
                  sessions_directory: str = 'tdlib_sessions',
                  use_test_data_center: bool = False,
                  use_message_database: bool = True,
-                 # proxy: dict = None,  # deprecated!
-                 clear_proxies: bool = True,  # old proxies saved in session files
+                 # proxy: dict = None,  # Deprecated. Use self.set_proxy()
                  device_model: str = 'SpecialDevice',
                  application_version: str = '7.62',
                  system_version: str = '5.45',
@@ -84,7 +83,6 @@ class TelegramTDLibClient:
         self.application_version = application_version
         self.system_version = system_version
         self.system_language_code = system_language_code
-        self.clear_proxies = clear_proxies
 
         self._tdjson_client = TDJson(library_path, tdlib_log_level)
         self._init()
@@ -98,9 +96,9 @@ class TelegramTDLibClient:
         for proxy in proxies['proxies']:
             self.call_method('removeProxy', proxy_id=proxy['id'])
 
-    def set_proxy(self, host: str, port: int, proxy_type=ProxyTypes.proxyTypeSocks5, check_proxy=True) -> None:
+    def set_proxy(self, host: str, port: int, proxy_type=ProxyTypes.Http, check_proxy=True) -> None:
         """
-            Since TDLib 1.3.0 addProxy can be called to enable proxy any time, even before setTdlibParameters.
+            Since TDLib 1.3.0 addProxy can be called to enable proxy any time, even before setTdlibParameters. (lie)
             Also you can use custom proxy_type like {'@type': 'proxyTypeMtproto', 'secret': '123'}
         """
         self.remove_proxy()
@@ -109,16 +107,18 @@ class TelegramTDLibClient:
             self.check_proxy()
 
     def check_proxy(self) -> float:
+        # getting current proxy -------------------------------------------
         proxies = self.call_method('getProxies')['proxies']
-
         if not proxies:
             raise errors.BadProxy('No any proxy')
         if len(proxies) != 1:
             logger.error('len(proxies) = %d. Smth went wrong', len(proxies))
+        proxy = proxies[0]
 
         try:
-            result = self.call_method('pingProxy', proxy_id=proxies[0]['id'])
-            logger.info('Proxy works. Response time: %s seconds' % result['seconds'])
+            result = self.call_method('pingProxy', proxy_id=proxy['id'])
+            logger.info('Proxy (%s:%s) works. Response time: %s seconds' %
+                        (proxy['server'], proxy['port'], result['seconds']))
             return result['seconds']
         except (errors.InternalTdLibTimeoutExpired, errors.ConnectionError):
             raise errors.BadProxy
@@ -313,7 +313,7 @@ class TelegramTDLibClient:
             if message == 'Already logging out':
                 raise errors.AlreadyLoggingOut(exc_msg)
 
-            if message == 'Timeout expired':
+            if message in ('Timeout expired', 'Pong timeout expired'):
                 raise errors.InternalTdLibTimeoutExpired(exc_msg)
 
             if code == 401 or message == 'Unauthorized':
@@ -322,7 +322,10 @@ class TelegramTDLibClient:
             if code in (429, 420):
                 raise errors.TooManyRequests(exc_msg)
 
-            if message == 'Connection closed':
+            if message.startswith('Failed to connect to'):
+                raise errors.ConnectionError(exc_msg)
+
+            if message in ('Connection closed', 'Failed to connect'):
                 raise errors.ConnectionError(exc_msg)
 
             if message.startswith('Read from fd') and message.endswith('has failed'):  # I know regex he he
@@ -355,5 +358,4 @@ class TelegramTDLibClient:
             'encryption_key': self._database_encryption_key
         })
 
-        if self.clear_proxies:
-            self.remove_proxy()
+        self.remove_proxy()   # old proxy saved in session file

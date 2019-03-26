@@ -23,7 +23,7 @@ telegram_client = TelegramTDLibClient(
     # see all parameters in source code
 )
 
-telegram_client.set_proxy('109.234.112.250', 46675, ProxyTypes.proxyTypeHttp)
+telegram_client.set_proxy('111.111.111.111', 8080, ProxyTypes.proxyTypeHttp)
 # telegram_client.check_proxy()  # ping if you need
 
 if not telegram_client.is_authorized():
