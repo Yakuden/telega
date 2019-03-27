@@ -218,8 +218,7 @@ class TelegramTDLibClient:
         else:
             raise errors.TDLibError('Unknown group type: %s' % chat['type']['@type'])
 
-        users = [self.get_user(m['user_id']) for m in members]
-        return users
+        return members
 
     def get_user(self, user_id: int) -> dict:
         """ This is an offline request if the current user is not a bot. """
