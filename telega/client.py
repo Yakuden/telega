@@ -206,7 +206,11 @@ class TelegramTDLibClient:
 
     def get_group_members(self, group_id: int, page_size=default_members_page_size) -> List[dict]:
         """ for basic group, super group (channel) """
-        chat = self.call_method('getChat', chat_id=group_id)  # offline request
+        try:
+            chat = self.call_method('getChat', chat_id=group_id)  # offline request
+        except errors.ObjectNotFound:
+            self.get_all_chats()
+            chat = self.call_method('getChat', chat_id=group_id)  # offline request
 
         if chat['type']['@type'] == 'chatTypeBasicGroup':
             members = self.call_method('getBasicGroupFullInfo',
