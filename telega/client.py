@@ -45,7 +45,7 @@ class TelegramTDLibClient:
 
     database_encryption_key_length = 12
     default_timeout = 60
-    default_request_delay = 0.5  # for pagination
+    default_request_delay = 1  # for pagination
     default_chats_page_size = 100
     default_members_page_size = 200
 

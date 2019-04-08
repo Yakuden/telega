@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='telega',
-    version='1.1.2',
+    version='1.1.3',
     packages=find_packages(),
     url='https://github.com/RusJr/telega',
     license='MIT',
