@@ -15,7 +15,8 @@ logger = logging.getLogger('telega')
 
 BASE_DIR = 'telega'
 ABS_BASE_DIR = str([p for p in Path(__file__).absolute().parents if p.name == BASE_DIR][0])
-DEFAULT_TDLIB_PATH = str(os.path.join(ABS_BASE_DIR, 'td_lib/linux/libtdjson.so'),)
+# DEFAULT_TDLIB_PATH = str(os.path.join(ABS_BASE_DIR, 'td_lib/linux/libtdjson.so'),)
+DEFAULT_TDLIB_PATH = str(os.path.join(ABS_BASE_DIR, 'td_lib/linux/libtdjson.so.1.4.0'),)
 
 
 class AuthStates:
@@ -120,7 +121,7 @@ class TelegramTDLibClient:
             logger.info('Proxy (%s:%s) works. Response time: %s seconds' %
                         (proxy['server'], proxy['port'], result['seconds']))
             return result['seconds']
-        except (errors.InternalTdLibTimeoutExpired, errors.ConnectionError):
+        except (errors.InternalTdLibTimeoutExpired, errors.TdLibConnectionError):
             raise errors.BadProxy
 
     def get_auth_state(self) -> str:
@@ -326,14 +327,14 @@ class TelegramTDLibClient:
                 raise errors.TooManyRequests(exc_msg)
 
             if message.startswith('Failed to connect to'):
-                raise errors.ConnectionError(exc_msg)
+                raise errors.TdLibConnectionError(exc_msg)
 
-            if message in ('Connection closed', 'Failed to connect'):
-                raise errors.ConnectionError(exc_msg)
+            if message in ('Connection closed', 'Failed to connect', 'Connection timeout expired'):
+                raise errors.TdLibConnectionError(exc_msg)
 
             if message.startswith('Read from fd') and message.endswith('has failed'):  # I know regex he he
                 # https://github.com/tdlib/td/issues/476
-                raise errors.ConnectionError(exc_msg)
+                raise errors.TdLibConnectionError(exc_msg)
 
             raise errors.UnknownError(exc_msg)
 

@@ -20,7 +20,7 @@ class BadProxy(TDLibError):
     pass
 
 
-class ConnectionError(TDLibError):
+class TdLibConnectionError(TDLibError):
     pass
 
 
