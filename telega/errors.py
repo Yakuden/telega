@@ -68,5 +68,9 @@ class TwoFactorPasswordNeeded(AuthError):
     pass
 
 
+class AuthKeyDuplicated(AuthError):
+    pass
+
+
 class AlreadyLoggingOut(TDLibError):
     pass

@@ -38,8 +38,9 @@ class ProxyTypes:
         You can use custom proxy types like {'@type': 'proxyTypeMtproto', 'secret': '123'}
         https://core.telegram.org/tdlib/docs/classtd_1_1td__api_1_1_proxy_type.html
     """
-    Socks5 = {'@type': 'proxyTypeSocks5'}
-    Http = {'@type': 'proxyTypeHttp'}
+    Socks5 = 'proxyTypeSocks5'
+    Http = 'proxyTypeHttp'
+    Mtproto = 'proxyTypeMtproto'
 
 
 class TelegramTDLibClient:
@@ -88,22 +89,39 @@ class TelegramTDLibClient:
         self._tdjson_client = TDJson(library_path, tdlib_log_level)
         self._init()
 
-    def __del__(self):
-        if hasattr(self, '_tdjson'):
-            self._tdjson_client.destroy()
+    # def __del__(self):
+    #     if hasattr(self, '_tdjson'):
+    #         self._tdjson_client.destroy()
 
     def remove_proxy(self) -> None:
         proxies = self.call_method('getProxies')
         for proxy in proxies['proxies']:
             self.call_method('removeProxy', proxy_id=proxy['id'])
 
-    def set_proxy(self, host: str, port: int, proxy_type=ProxyTypes.Http, check_proxy=True) -> None:
+    def set_proxy(self, host: str, port: int,
+                  proxy_type=ProxyTypes.Http,
+                  secret='',  # for Mtproto
+                  username='',
+                  password='',
+                  http_only=False,  # For HTTP: Pass true, if the proxy supports only HTTP requests and doesn't support
+                  # transparent TCP connections via HTTP CONNECT method.
+                  check_proxy=True) -> None:
         """
             Since TDLib 1.3.0 addProxy can be called to enable proxy any time, even before setTdlibParameters. (lie)
             Also you can use custom proxy_type like {'@type': 'proxyTypeMtproto', 'secret': '123'}
         """
         self.remove_proxy()
-        self.call_method('addProxy', server=host, port=port, enable=True, type=proxy_type)
+
+        proxy_type_obj = {
+            '@type': proxy_type,
+            'secret': secret,
+            'http_only': http_only,
+            'username': username,
+            'password': password,
+        }
+
+        self.call_method('addProxy', server=host, port=port, enable=True, type=proxy_type_obj)
+
         if check_proxy:
             self.check_proxy()
 
@@ -304,6 +322,9 @@ class TelegramTDLibClient:
 
             if message == 'PHONE_CODE_INVALID':
                 raise errors.PhoneCodeInvalid(exc_msg)
+
+            if message == 'AUTH_KEY_DUPLICATED':
+                raise errors.AuthKeyDuplicated(exc_msg)
 
             if message == 'Supergroup members are unavailable':
                 raise errors.NoPermission(exc_msg)
