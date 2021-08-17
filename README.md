@@ -1,4 +1,4 @@
-# Telega
+# Telegaden
 
 ## Description
 Python Telegram TDLib sync client
@@ -6,7 +6,7 @@ Python API for the [tdlib](https://github.com/tdlib/td) library.
 It helps you build your own Telegram clients.
 
 ## Installation
-pip install telega
+pip install telegaden
 
 ## Example
 
