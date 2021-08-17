@@ -56,6 +56,7 @@ class TelegramTDLibClient:
                  api_hash: str,
                  phone: str,
                  database_encryption_key: str,
+                 session_path: str = '', # if u need custom file path
                  library_path: str = DEFAULT_TDLIB_PATH,  # 'libtdjson.so'
                  tdlib_log_level=2,
                  timeout: Union[int, float] = default_timeout,
@@ -85,7 +86,7 @@ class TelegramTDLibClient:
         self.application_version = application_version
         self.system_version = system_version
         self.system_language_code = system_language_code
-
+        self.session_path = session_path if session_path else self.phone
         self._tdjson_client = TDJson(library_path, tdlib_log_level)
         self._init()
 
@@ -373,8 +374,8 @@ class TelegramTDLibClient:
                 'application_version': self.application_version,
                 'system_language_code': self.system_language_code,
                 'use_message_database': self.use_message_database,
-                'database_directory': os.path.join(self.files_directory, self.phone, 'database'),
-                'files_directory': os.path.join(self.files_directory, self.phone, 'files'),
+                'database_directory': os.path.join(self.files_directory, self.session_path, 'database'),
+                'files_directory': os.path.join(self.files_directory, self.session_path, 'files'),
             }
         })
 

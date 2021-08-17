@@ -2,13 +2,13 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name='telega',
+    name='telegaden',
     version='1.1.8',
     packages=find_packages(),
-    url='https://github.com/RusJr/telega',
+    url='https://github.com/Yakuden/telega',
     license='MIT',
-    author='Rus Jr',
-    author_email='binderrrr@gmail.com',
+    author='Yakuden',
+    author_email='yakudenn@gmail.com',
     keywords='telegram telega client tglib',
     description='Python Telegram TDLib sync client',
     package_data={
